@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#090909">
+<title>BARBRO — Find your barber</title>
+<style>
+:root{--bg:#090909;--panel:#141414;--panel2:#1c1c1c;--line:#303030;--muted:#a6a6a6;--white:#f7f7f7;--accent:#d7d7d7}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--white);font-family:Arial,Helvetica,sans-serif}
+header{border-bottom:1px solid var(--line);padding:19px max(22px,calc((100% - 1120px)/2));display:flex;align-items:center;justify-content:space-between;gap:16px}
+.logo{font-size:30px;font-weight:900;letter-spacing:2px}.tag{font-size:11px;color:var(--muted);letter-spacing:2px;margin-top:3px}
+.pill{border:1px solid #555;border-radius:30px;padding:9px 13px;color:#ddd;font-size:12px}
+main{max-width:1120px;margin:auto;padding:54px 22px 70px}
+.hero{max-width:720px;margin-bottom:32px}.eyebrow{font-size:11px;letter-spacing:3px;color:#aaa;font-weight:bold}
+h1{font-size:clamp(38px,7vw,68px);line-height:.98;margin:14px 0 15px;letter-spacing:-2px}
+.sub{color:#aaa;line-height:1.6;font-size:15px;max-width:580px}
+.searchbar{display:flex;gap:10px;margin:28px 0 14px;flex-wrap:wrap}
+input,select{background:#151515;border:1px solid #383838;color:white;border-radius:10px;padding:14px 15px;font-size:14px;outline:none}
+input:focus,select:focus{border-color:#aaa}.searchbar input{flex:1;min-width:210px}
+button{border:0;border-radius:10px;background:#f4f4f4;color:#080808;font-weight:bold;padding:14px 18px;font-size:13px;cursor:pointer}
+button.secondary{background:#202020;color:#eee;border:1px solid #414141}
+button:disabled{opacity:.55;cursor:wait}
+.status{font-size:12px;color:#aaa;min-height:20px;margin:10px 0 28px}
+.sectionhead{display:flex;align-items:end;justify-content:space-between;gap:15px;margin:34px 0 16px}
+h2{font-size:22px;margin:0}.count{font-size:12px;color:#aaa}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:18px;min-height:190px;display:flex;flex-direction:column}
+.cardtop{display:flex;justify-content:space-between;gap:10px;align-items:start}
+.avatar{width:42px;height:42px;border-radius:12px;background:#292929;display:grid;place-items:center;font-size:20px}
+.distance{font-size:11px;color:#aaa}.card h3{font-size:17px;margin:15px 0 6px}.address{font-size:12px;color:#aaa;line-height:1.45}
+.rating{font-size:12px;color:#ddd;margin:10px 0}.card button{margin-top:auto;width:100%;padding:11px}
+.empty{border:1px dashed #444;border-radius:14px;padding:28px;color:#aaa;font-size:14px;line-height:1.6;grid-column:1/-1}
+.note{margin-top:32px;border-top:1px solid var(--line);padding-top:17px;color:#777;font-size:11px;line-height:1.6}
+.modalback{display:none;position:fixed;inset:0;background:#000b;z-index:5;padding:18px;align-items:center;justify-content:center}
+.modal{background:#171717;border:1px solid #444;border-radius:16px;padding:22px;width:min(440px,100%)}
+.modal h2{margin-bottom:8px}.modal p{color:#aaa;font-size:13px;line-height:1.5}
+.stars{display:flex;gap:8px;margin:15px 0}.stars button{font-size:23px;padding:5px 8px;background:#292929;color:#777}.stars button.active{color:#fff}
+.modalactions{display:flex;gap:9px;margin-top:17px}.modalactions button{flex:1}
+footer{text-align:center;color:#777;font-size:11px;padding:24px;border-top:1px solid var(--line);letter-spacing:1px}
+@media(max-width:520px){header{padding:16px 18px}main{padding:40px 17px}.pill{display:none}.searchbar button{width:100%}}
+</style>
+</head>
+<body>
+<header><div><div class="logo">BARBRO</div><div class="tag">FIND. BOOK. LOOK GOOD.</div></div><div class="pill">BARBER DISCOVERY</div></header>
+<main>
+<section class="hero">
+<div class="eyebrow">YOUR NEXT CUT STARTS HERE</div>
+<h1>Good hair.<br>Great barbers.</h1>
+<p class="sub">Discover barbershops around you. Explore places nearby and help others find their next great cut.</p>
+</section>
+<div class="searchbar">
+<input id="search" type="search" placeholder="Search by barber or area…" aria-label="Search barbers">
+<button id="locate">FIND BARBERS NEAR ME</button>
+</div>
+<div class="status" id="status">Turn on location to discover barbers near you.</div>
+<div class="sectionhead"><h2>Nearby barbers</h2><span class="count" id="count">Waiting for location</span></div>
+<section class="grid" id="results"><div class="empty">Your nearby barber results will appear here. Tap <b>Find barbers near me</b> and allow location access when your browser asks.</div></section>
+<div class="note">BARBRO is an early prototype. Places are sourced from OpenStreetMap where available. Ratings you add in this demo are saved only in this browser on this device; shared accounts and online reviews will be added when a secure database is connected.</div>
+</main>
+<footer>BARBRO © 2026</footer>
+
+<div class="modalback" id="modalback">
+<div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalname">
+<h2 id="modalname">Rate this barber</h2><p id="modaladdress"></p>
+<p>Your rating on this device</p>
+<div class="stars" id="stars">
+<button data-value="1" aria-label="1 star">★</button><button data-value="2" aria-label="2 stars">★</button><button data-value="3" aria-label="3 stars">★</button><button data-value="4" aria-label="4 stars">★</button><button data-value="5" aria-label="5 stars">★</button>
+</div>
+<div class="modalactions"><button class="secondary" id="closemodal">Close</button><button id="saverating">Save rating</button></div>
+</div></div>
+<script>
+const $ = id => document.getElementById(id);
+let barbers = [], selected = null, chosenRating = 0;
+const ratingsKey = "barbro-demo-ratings-v1";
+const savedRatings = () => { try{return JSON.parse(localStorage.getItem(ratingsKey)||"{}")}catch(e){return {}} };
+function setStatus(s){$("status").textContent=s}
+function distanceKm(a,b,c,d){const r=x=>x*Math.PI/180;const x=Math.sin(r(c-a)/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(r(d-b)/2)**2;return 6371*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))}
+function render(){
+ const q=$("search").value.trim().toLowerCase(), data=barbers.filter(b=>(b.name+" "+b.address).toLowerCase().includes(q));
+ $("count").textContent=`${data.length} ${data.length===1?"place":"places"} found`;
+ $("results").innerHTML="";
+ if(!data.length){$("results").innerHTML='<div class="empty">No barbers match that search. Try another name or area, or search again near you.</div>';return}
+ data.forEach(b=>{
+  const userRating=savedRatings()[b.id], stars=userRating?`Your rating: ${"★".repeat(userRating)}${"☆".repeat(5-userRating)}`:"No rating added yet";
+  const card=document.createElement("article");card.className="card";
+  const top=document.createElement("div");top.className="cardtop";
+  top.innerHTML='<div class="avatar">✂</div><span class="distance">'+(b.distance!=null?b.distance.toFixed(1)+" km away":"Nearby")+'</span>';
+  const name=document.createElement("h3");name.textContent=b.name;
+  const addr=document.createElement("div");addr.className="address";addr.textContent=b.address||"Address not listed";
+  const rating=document.createElement("div");rating.className="rating";rating.textContent=stars;
+  const btn=document.createElement("button");btn.textContent="VIEW & RATE";btn.onclick=()=>openRating(b);
+  card.append(top,name,addr,rating,btn);$("results").append(card);
+ });
+}
+function openRating(b){selected=b;chosenRating=Number(savedRatings()[b.id]||0);$("modalname").textContent=b.name;$("modaladdress").textContent=b.address||"Address not listed";paintStars();$("modalback").style.display="flex"}
+function paintStars(){$$("stars").querySelectorAll("button").forEach(x=>x.classList.toggle("active",Number(x.dataset.value)<=chosenRating))}
+function $$(id){return $(id)}
+$("stars").addEventListener("click",e=>{const b=e.target.closest("button[data-value]");if(b){chosenRating=Number(b.dataset.value);paintStars()}});
+$("closemodal").onclick=()=>{$("modalback").style.display="none"};
+$("saverating").onclick=()=>{if(!selected||!chosenRating){alert("Choose a star rating first.");return}const r=savedRatings();r[selected.id]=chosenRating;localStorage.setItem(ratingsKey,JSON.stringify(r));$("modalback").style.display="none";render()};
+$("search").addEventListener("input",render);
+$("locate").onclick=()=>{
+ if(!navigator.geolocation){setStatus("Location is not supported by this browser.");return}
+ $("locate").disabled=true;$("locate").textContent="SEARCHING…";setStatus("Requesting your location…");
+ navigator.geolocation.getCurrentPosition(async pos=>{
+  const {latitude:lat,longitude:lon}=pos.coords;
+  setStatus("Searching OpenStreetMap for barbers nearby…");
+  const query=`[out:json][timeout:20];(node["shop"="hairdresser"](around:10000,${lat},${lon});way["shop"="hairdresser"](around:10000,${lat},${lon});relation["shop"="hairdresser"](around:10000,${lat},${lon});node["craft"="hairdresser"](around:10000,${lat},${lon});way["craft"="hairdresser"](around:10000,${lat},${lon}););out center tags;`;
+  try{
+   const response=await fetch("https://overpass-api.de/api/interpreter",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"data="+encodeURIComponent(query)});
+   if(!response.ok)throw new Error("Map search is temporarily unavailable.");
+   const json=await response.json();
+   barbers=json.elements.map(el=>{const tags=el.tags||{},p=el.center||el;return {id:String(el.type+el.id),name:tags.name||tags.brand||"Barbershop",address:[tags["addr:street"],tags["addr:housenumber"],tags["addr:suburb"]].filter(Boolean).join(", "),distance:distanceKm(lat,lon,p.lat,p.lon)}}).sort((a,b)=>a.distance-b.distance);
+   if(!barbers.length)setStatus("No barbershops were listed in OpenStreetMap within 10 km. Try again later or search a wider area.");
+   else setStatus(`Found ${barbers.length} nearby hairdresser listing(s). Results are ordered by distance.`);
+   render();
+  }catch(err){setStatus(err.message+" Check your connection and try again.");barbers=[];render()}
+  $("locate").disabled=false;$("locate").textContent="FIND BARBERS NEAR ME";
+ },err=>{setStatus(err.code===1?"Location permission was denied. Allow location in your browser settings, then try again.":"Couldn't get your location. Check your device settings and try again.");$("locate").disabled=false;$("locate").textContent="FIND BARBERS NEAR ME"},{enableHighAccuracy:true,timeout:12000,maximumAge:60000});
+};
+</script>
+</body>
+</html>
