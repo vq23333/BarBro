@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101010">
+  <title>BARBRO — Find your barber</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{--bg:#101010;--panel:#1b1b1b;--line:#333;--text:#f5f5f5;--muted:#aaa;--accent:#d6ff62;--danger:#ff7777}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+    header{padding:22px max(20px,calc((100vw - 1100px)/2));border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:15px}
+    .brand{font-size:25px;font-weight:900;letter-spacing:3px}.brand span{color:var(--accent)}
+    main{max-width:1100px;margin:auto;padding:28px 20px 70px}.hero{padding:34px 0 25px}.eyebrow{color:var(--accent);font-size:12px;font-weight:800;letter-spacing:2px}
+    h1{font-size:clamp(34px,6vw,62px);line-height:1.02;margin:10px 0}.sub{color:var(--muted);max-width:620px}
+    h2{font-size:22px;margin:0 0 14px}h3{margin:0 0 5px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:15px}
+    .panel,.barber-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;margin:16px 0}
+    .barber-card{margin:0}.barber-card p{color:var(--muted);margin:8px 0}.meta{font-size:13px;color:var(--muted)}
+    label{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
+    input,textarea,select{width:100%;padding:12px 13px;background:#101010;border:1px solid #444;border-radius:9px;color:var(--text);font:inherit}
+    textarea{min-height:90px;resize:vertical}button{border:0;border-radius:999px;padding:11px 17px;font-weight:800;cursor:pointer;background:var(--accent);color:#111}
+    button.secondary{background:#303030;color:var(--text);border:1px solid #484848}button:disabled{opacity:.5;cursor:not-allowed}
+    .actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}.status{padding:12px 14px;border-radius:10px;background:#242424;color:var(--muted);margin:14px 0}.status.error{color:var(--danger)}.status.good{color:var(--accent)}
+    .hidden{display:none!important}.stars{color:var(--accent);letter-spacing:2px}.topline{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .small{font-size:12px;color:var(--muted)}.review{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}.review p{white-space:pre-wrap}
+    footer{border-top:1px solid var(--line);padding:24px;text-align:center;color:var(--muted);font-size:12px}
+    @media(max-width:600px){header{padding:17px 20px}.hero{padding-top:24px}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="brand">BAR<span>BRO</span></div>
+  <div class="actions" style="margin:0">
+    <button id="headerAuth" class="secondary">Sign in</button>
+    <button id="signOut" class="secondary hidden">Sign out</button>
+  </div>
+</header>
+<main>
+  <section class="hero">
+    <div class="eyebrow">GOOD CUTS. REAL REVIEWS.</div>
+    <h1>Find your<br>next barber.</h1>
+    <p class="sub">Discover local barber shops, compare customer ratings and share your experience.</p>
+  </section>
+
+  <div id="notice" class="status">Connecting to BARBRO…</div>
+
+  <section id="authPanel" class="panel hidden">
+    <div class="topline"><h2 id="authTitle">Welcome back</h2><button id="closeAuth" class="secondary">Close</button></div>
+    <form id="authForm">
+      <label for="authName" id="nameLabel" class="hidden">Your name</label>
+      <input id="authName" class="hidden" autocomplete="name" placeholder="Display name">
+      <label for="authEmail">Email</label><input id="authEmail" type="email" autocomplete="email" required placeholder="you@example.com">
+      <label for="authPassword">Password</label><input id="authPassword" type="password" autocomplete="current-password" minlength="6" required placeholder="At least 6 characters">
+      <div class="actions"><button type="submit" id="authSubmit">Sign in</button><button type="button" id="switchAuth" class="secondary">Create account</button></div>
+    </form>
+    <p class="small">Use an email address you can access. If email confirmation is enabled, confirm your email before signing in.</p>
+  </section>
+
+  <section id="profilePanel" class="panel hidden">
+    <h2>Your account</h2>
+    <p id="accountLine" class="meta"></p>
+    <label for="role">I am using BARBRO as</label>
+    <select id="role"><option value="customer">Customer</option><option value="barber">Barber</option></select>
+    <label for="displayName">Display name</label><input id="displayName" maxlength="80" placeholder="Your name">
+    <div id="barberFields" class="hidden">
+      <label for="shopName">Barber shop name</label><input id="shopName" maxlength="120" placeholder="Shop name">
+      <label for="bio">About the shop</label><textarea id="bio" maxlength="1000" placeholder="Tell customers about your shop"></textarea>
+      <label for="address">Address</label><input id="address" maxlength="250" placeholder="Street address">
+      <label for="city">City</label><input id="city" maxlength="100" placeholder="City">
+      <label for="phone">Phone (optional)</label><input id="phone" maxlength="40" placeholder="Contact number">
+    </div>
+    <div class="actions"><button id="saveProfile">Save profile</button></div>
+  </section>
+
+  <section>
+    <div class="topline"><h2>Find a barber</h2><span class="small" id="resultCount"></span></div>
+    <div class="panel">
+      <label for="search">Search by shop, city or address</label>
+      <input id="search" placeholder="Try a shop name or city">
+      <div class="actions"><button id="searchBtn">Search</button><button id="clearSearch" class="secondary">Show all</button></div>
+    </div>
+    <div id="barberList" class="grid"><div class="status">Loading barber profiles…</div></div>
+  </section>
+</main>
+<footer>BARBRO · Built for better barber discoveries</footer>
+
+<script>
+(() => {
+  const SUPABASE_URL = "https://qvicbrtzyixpskxqeusq.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_6Sqr1Lppa8hgI5Tc0mqfWQ_OLj6QQNF";
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const $ = id => document.getElementById(id);
+  let currentUser = null, authMode = "login", allBarbers = [];
+
+  function notify(message, type="") {
+    const el=$("notice"); el.textContent=message; el.className="status"+(type?" "+type:"");
+  }
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+  function setAuthMode(mode) {
+    authMode=mode;
+    $("authTitle").textContent=mode==="signup"?"Create your account":"Welcome back";
+    $("authSubmit").textContent=mode==="signup"?"Create account":"Sign in";
+    $("switchAuth").textContent=mode==="signup"?"I already have an account":"Create account";
+    $("authName").classList.toggle("hidden",mode!=="signup");
+    $("nameLabel").classList.toggle("hidden",mode!=="signup");
+    $("authPassword").autocomplete=mode==="signup"?"new-password":"current-password";
+  }
+  function showAuth(){ $("authPanel").classList.remove("hidden"); $("authPanel").scrollIntoView({behavior:"smooth",block:"center"}); }
+  function stars(rating){ const n=Math.round(Number(rating)||0); return "★".repeat(n)+"☆".repeat(5-n); }
+
+  async function loadBarbers() {
+    $("barberList").innerHTML='<div class="status">Loading barber profiles…</div>';
+    const {data:profiles,error}=await db.from("barber_profiles").select("id,shop_name,bio,address,city,phone,created_at").order("created_at",{ascending:false});
+    if(error){ $("barberList").innerHTML=""; notify("Could not load barber profiles: "+error.message,"error"); return; }
+    const ids=(profiles||[]).map(p=>p.id);
+    let summaries={}, owners={};
+    if(ids.length){
+      const [ratings,users]=await Promise.all([
+        db.from("barber_rating_summary").select("barber_id,review_count,average_rating").in("barber_id",ids),
+        db.from("profiles").select("id,display_name").in("id",ids)
+      ]);
+      if(!ratings.error) (ratings.data||[]).forEach(r=>summaries[r.barber_id]=r);
+      if(!users.error) (users.data||[]).forEach(u=>owners[u.id]=u);
+    }
+    allBarbers=(profiles||[]).map(p=>({...p,display_name:owners[p.id]?.display_name||"BARBRO barber",rating:summaries[p.id]?.average_rating||null,count:summaries[p.id]?.review_count||0}));
+    renderBarbers(allBarbers);
+    if(!profiles.length) notify("No barber profiles yet. Sign in and create a barber profile to add the first shop.","good");
+    else notify("BARBRO is connected. "+profiles.length+" barber profile(s) loaded.","good");
+  }
+
+  function renderBarbers(list) {
+    $("resultCount").textContent=list.length+" found";
+    if(!list.length){$("barberList").innerHTML='<div class="status">No matching barber shops found.</div>';return;}
+    $("barberList").innerHTML=list.map(b=>`
+      <article class="barber-card">
+        <div class="topline"><h3>${escapeHtml(b.shop_name)}</h3><span class="stars">${b.rating?Number(b.rating).toFixed(1)+" ★":"—"}</span></div>
+        <div class="meta">${escapeHtml([b.city,b.address].filter(Boolean).join(" · ")||"Location not added")}</div>
+        <p>${escapeHtml(b.bio||"No shop description yet.")}</p>
+        <div class="small">${b.count} review(s) ${b.phone?" · "+escapeHtml(b.phone):""}</div>
+        <div class="actions"><button class="secondary" data-reviews="${escapeHtml(b.id)}">Read / write reviews</button></div>
+        <div id="reviews-${escapeHtml(b.id)}" class="hidden"></div>
+      </article>`).join("");
+    $("barberList").querySelectorAll("[data-reviews]").forEach(btn=>btn.addEventListener("click",()=>toggleReviews(btn.dataset.reviews)));
+  }
+
+  async function toggleReviews(barberId) {
+    const holder=$("reviews-"+barberId);
+    if(!holder.classList.contains("hidden")){holder.classList.add("hidden");return;}
+    holder.classList.remove("hidden"); holder.innerHTML='<div class="review">Loading reviews…</div>';
+    const {data,error}=await db.from("reviews").select("id,customer_id,rating,review_text,created_at").eq("barber_id",barberId).order("created_at",{ascending:false});
+    if(error){holder.innerHTML='<div class="review">Could not load reviews: '+escapeHtml(error.message)+'</div>';return;}
+    const rows=data||[];
+    holder.innerHTML=(rows.length?rows.map(r=>`<div class="review"><div class="topline"><span class="stars">${stars(r.rating)}</span><span class="small">${new Date(r.created_at).toLocaleDateString()}</span></div><p>${escapeHtml(r.review_text||"No written comment.")}</p>${currentUser&&currentUser.id===r.customer_id?'<span class="small">Your review</span>':""}</div>`).join(""):'<div class="review small">No reviews yet.</div>')+
+      (currentUser?`<div class="review"><h3>Leave your review</h3><label>Rating</label><select id="rating-${barberId}"><option value="5">5 — Excellent</option><option value="4">4 — Very good</option><option value="3">3 — Good</option><option value="2">2 — Fair</option><option value="1">1 — Poor</option></select><label>Comment (optional)</label><textarea id="comment-${barberId}" maxlength="2000" placeholder="Share your experience"></textarea><div class="actions"><button data-save-review="${barberId}">Submit review</button></div><p class="small">One review per customer per barber. Submitting again updates your existing review.</p></div>`:'<div class="review small">Sign in to write a review.</div>');
+    const save=holder.querySelector("[data-save-review]");
+    if(save) save.addEventListener("click",()=>saveReview(barberId,save));
+  }
+
+  async function saveReview(barberId,button) {
+    if(!currentUser){showAuth();return;}
+    const rating=Number($("rating-"+barberId).value), review_text=$("comment-"+barberId).value.trim();
+    button.disabled=true;
+    const {error}=await db.from("reviews").upsert({barber_id:barberId,customer_id:currentUser.id,rating,review_text},{onConflict:"barber_id,customer_id"});
+    button.disabled=false;
+    if(error){notify("Could not save review: "+error.message,"error");return;}
+    notify("Your review has been saved.","good"); await loadBarbers(); await toggleReviews(barberId);
+  }
+
+  async function refreshSession(session) {
+    currentUser=session?.user||null;
+    $("signOut").classList.toggle("hidden",!currentUser);
+    $("headerAuth").classList.toggle("hidden",!!currentUser);
+    $("profilePanel").classList.toggle("hidden",!currentUser);
+    if(!currentUser){$("accountLine").textContent="";return;}
+    $("accountLine").textContent="Signed in as "+currentUser.email;
+    const {data,error}=await db.from("profiles").select("display_name,role").eq("id",currentUser.id).maybeSingle();
+    if(error){notify("Signed in, but profile lookup failed: "+error.message,"error");return;}
+    if(data){$("displayName").value=data.display_name||"";$("role").value=data.role||"customer";}
+    else {$("displayName").value=currentUser.user_metadata?.display_name||"";$("role").value=currentUser.user_metadata?.role||"customer";}
+    await loadOwnBarberProfile();
+    updateRoleFields();
+  }
+
+  async function loadOwnBarberProfile(){
+    if(!currentUser)return;
+    const {data}=await db.from("barber_profiles").select("shop_name,bio,address,city,phone").eq("id",currentUser.id).maybeSingle();
+    if(data){$("shopName").value=data.shop_name||"";$("bio").value=data.bio||"";$("address").value=data.address||"";$("city").value=data.city||"";$("phone").value=data.phone||"";}
+  }
+  function updateRoleFields(){$("barberFields").classList.toggle("hidden",$("role").value!=="barber");}
+
+  $("headerAuth").onclick=()=>{setAuthMode("login");showAuth();};
+  $("closeAuth").onclick=()=>$("authPanel").classList.add("hidden");
+  $("switchAuth").onclick=()=>setAuthMode(authMode==="login"?"signup":"login");
+  $("role").onchange=updateRoleFields;
+  $("authForm").onsubmit=async e=>{
+    e.preventDefault(); const email=$("authEmail").value.trim(),password=$("authPassword").value;
+    const button=$("authSubmit");button.disabled=true;
+    let result;
+    if(authMode==="signup"){
+      const display_name=$("authName").value.trim();
+      result=await db.auth.signUp({email,password,options:{data:{display_name,role:"customer"}}});
+      if(!result.error && result.data.user){
+        if(result.data.session){notify("Account created and signed in.","good");$("authPanel").classList.add("hidden");await refreshSession(result.data.session);}
+        else notify("Account created. Check your email to confirm it, then sign in.","good");
+      }
+    }else{
+      result=await db.auth.signInWithPassword({email,password});
+      if(!result.error){notify("Signed in successfully.","good");$("authPanel").classList.add("hidden");await refreshSession(result.data.session);}
+    }
+    button.disabled=false;
+    if(result?.error)notify(result.error.message,"error");
+  };
+  $("signOut").onclick=async()=>{const {error}=await db.auth.signOut();if(error)notify(error.message,"error");else{await refreshSession(null);notify("Signed out.","good");}};
+  $("saveProfile").onclick=async()=>{
+    if(!currentUser)return;
+    const role=$("role").value,display_name=$("displayName").value.trim();
+    if(!display_name){notify("Please enter a display name.","error");return;}
+    const btn=$("saveProfile");btn.disabled=true;
+    const {error:profileError}=await db.from("profiles").upsert({id:currentUser.id,display_name,role},{onConflict:"id"});
+    if(profileError){btn.disabled=false;notify("Could not save account profile: "+profileError.message,"error");return;}
+    if(role==="barber"){
+      const shop_name=$("shopName").value.trim();
+      if(!shop_name){btn.disabled=false;notify("Please enter your barber shop name.","error");return;}
+      const {error}=await db.from("barber_profiles").upsert({id:currentUser.id,shop_name,bio:$("bio").value.trim(),address:$("address").value.trim(),city:$("city").value.trim(),phone:$("phone").value.trim()},{onConflict:"id"});
+      if(error){btn.disabled=false;notify("Account saved, but barber profile failed: "+error.message,"error");return;}
+    }
+    btn.disabled=false;notify("Profile saved.","good");await loadBarbers();
+  };
+  $("searchBtn").onclick=()=>{const q=$("search").value.trim().toLowerCase();renderBarbers(allBarbers.filter(b=>[b.shop_name,b.city,b.address,b.bio].join(" ").toLowerCase().includes(q)));};
+  $("search").addEventListener("keydown",e=>{if(e.key==="Enter")$("searchBtn").click();});
+  $("clearSearch").onclick=()=>{$("search").value="";renderBarbers(allBarbers);};
+  (async()=>{
+    if(!window.supabase){notify("Supabase library failed to load. Check your internet connection.","error");return;}
+    const {data,error}=await db.auth.getSession();
+    if(error)notify("Could not check sign-in: "+error.message,"error");
+    await refreshSession(data?.session||null);
+    await loadBarbers();
+    db.auth.onAuthStateChange((_event,session)=>{refreshSession(session);});
+  })();
+})();
+</script>
+</body>
+</html>
